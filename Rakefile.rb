@@ -6,15 +6,32 @@ require 'sprockets'
 
 #task :default => :compile
 
-ROOT        = Pathname(File.dirname(__FILE__))
-LOGGER      = Logger.new(STDOUT)
-BUNDLES     = %w( common.css scripts.js )
-BUILD_DIR   = ROOT.join("build")
-SOURCE_DIR  = ROOT.join("src")
+# ASSETS
 
 STYLESHEETS = %w( common.css )
 JAVASCRIPTS = %w( scripts.js )
 
+# DIRECTORIES
+
+ROOT        = Pathname(File.dirname(__FILE__))
+
+BUILD_DIR   = ROOT.join("build")
+BUILD_STYLESHEETS_DIR = BUILD_DIR.join("css")
+BUILD_JAVASCRIPTS_DIR = BUILD_DIR.join("js")
+
+SOURCE_DIR  = ROOT.join("src")
+SOURCE_STYLESHEETS_DIR = SOURCE_DIR.join("stylesheets")
+SOURCE_JAVASCRIPTS_DIR = SOURCE_DIR.join("javascripts")
+SOURCE_IMAGES_DIR = SOURCE_DIR.join("images")
+# This is the array of directories Sprockets will look in
+SOURCE_DIRS = %w(SOURCE_STYLESHEETS_DIR, SOURCE_JAVASCRIPTS_DIR, SOURCE_IMAGES_DIR)
+
+#####
+
+LOGGER      = Logger.new(STDOUT)
+
+STYLESHEETS_MINIFY = 'sass' # Options: sass
+JAVASCRIPTS_MINIFY = 'closure' # Options: closure, uglify
 
 #task :compile do
 ##	sprockets = Sprockets::Environment.new
@@ -49,27 +66,13 @@ JAVASCRIPTS = %w( scripts.js )
 #end
 
 sprockets = Sprockets::Environment.new(File.dirname(__FILE__))
-sprockets.append_path 'src/javascripts'
-sprockets.append_path 'src/stylesheets'
+SOURCE_DIRS.each do |dir|
+	sprockets.append_path dir
+end
 
 namespace :assets do
-	desc "Compile all assets"
-	task :compile do
-	end
-
-	namespace :compile do
-	  desc "Compile CSS assets"
-		task :css do
-		end
-		
-		desc "Compile JS assets"
-		task :js do
-		end
-	end
-	
 	desc "Minify CSS & JS assets"
-	task :minify do
-		
+	task :minify => ['minify:css', 'minify:js'] do
 	end
 
 	namespace :minify do
@@ -80,7 +83,7 @@ namespace :assets do
 				LOGGER.debug "File: " + css
 				
 				File.open(BUILD_DIR.join('stylesheets/', css), 'w') do |f|
-					f.write(sass_css(contents))
+					f.write(sass_css(contents)) if STYLESHEETS_MINIFY == 'sass'
 				end
 			end
 		end
@@ -91,11 +94,9 @@ namespace :assets do
 				contents = sprockets.find_asset(js).to_s
 				LOGGER.debug "File: " + js
 				
-				File.open(BUILD_DIR.join('javascripts/uglifier', js), 'w') do |f|
-					f.write(uglify_js(contents))
-				end
-				File.open(BUILD_DIR.join('javascripts/closure', js), 'w') do |f|
-					f.write(closure_js(contents))
+				File.open(BUILD_JAVASCRIPTS_DIR.join(js), 'w') do |f|
+					f.write(closure_js(contents)) if JAVASCRIPTS_MINIFY == 'closure'
+					f.write(uglify_js(contents)) if JAVASCRIPTS_MINIFY == 'uglify'
 				end
 			end
 		end
